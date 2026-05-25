@@ -3,23 +3,28 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-
+use App\Models\Category;
+use Illuminate\View\View;
+use Illuminate\Support\Str;
 class CategoryController extends Controller
 {
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(Request $request)
     {
-        //
+        $search = $request->search;
+        if ($search) {
+            $categories = Category::where('name', 'LIKE', '%' . $search . '%')->get();
+        } else {
+            $categories = Category::all();
+        }
+        return view('admin.categories.index', compact('categories'));
     }
 
-    /**
-     * Show the form for creating a new resource.
-     */
     public function create()
     {
-        //
+        return view('admin.categories.create');
     }
 
     /**
@@ -27,38 +32,43 @@ class CategoryController extends Controller
      */
     public function store(Request $request)
     {
-        //
+        $request->validate(['name' => 'required']);
+        
+        Category::create([
+            'name' => $request->name,
+            'slug' => Str::slug($request->name)
+        ]);
+        
+        return redirect()->route('admin.categories.index')->with('success', 'Kategori ditambahkan');
     }
 
-    /**
-     * Display the specified resource.
-     */
     public function show(string $id)
     {
-        //
+        // Kosongkan saja tidak apa-apa, soal UTS tidak minta detail per kategori
     }
 
-    /**
-     * Show the form for editing the specified resource.
-     */
     public function edit(string $id)
     {
-        //
+        $category = Category::findOrFail($id);
+        return view('admin.categories.edit', compact('category'));
     }
 
-    /**
-     * Update the specified resource in storage.
-     */
     public function update(Request $request, string $id)
     {
-        //
+        $request->validate(['name' => 'required']);
+        $category = Category::findOrFail($id);
+        
+        $category->update([
+            'name' => $request->name,
+            'slug' => Str::slug($request->name)
+        ]);
+        
+        return redirect()->route('admin.categories.index')->with('success', 'Kategori diupdate');
     }
 
-    /**
-     * Remove the specified resource from storage.
-     */
     public function destroy(string $id)
     {
-        //
+        Category::destroy($id);
+        return redirect()->route('admin.categories.index')->with('success', 'Kategori dihapus');
     }
 }

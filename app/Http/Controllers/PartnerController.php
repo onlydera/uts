@@ -4,78 +4,80 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\Partner;
+use Illuminate\Support\Facades\Storage;
 
 class PartnerController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
-    public function index()
+    public function index(Request $request)
     {
-        $partners = Partner::all();
+        $search = $request->search;
+        if ($search) {
+            $partners = Partner::where('name', 'LIKE', '%' . $search . '%')->get();
+        } else {
+            $partners = Partner::all();
+        }
         return view('admin.partners.index', compact('partners'));
     }
 
-    /**
-     * Show the form for creating a new resource.
-     */
     public function create()
     {
         return view('admin.partners.create');
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
     public function store(Request $request)
     {
-        Partner::create([
-            'name' => $request->name,
-            'logo_url' => $request->logo_url
+        $request->validate([
+            'name' => 'required',
+            'logo' => 'required|image' 
         ]);
 
-        return redirect('/admin/partners')->with('success', 'Partner berhasil ditambahkan!');
+        $data = $request->all();
+        
+        if ($request->hasFile('logo')) {
+            $data['logo_url'] = $request->file('logo')->store('partners', 'public');
+        }
+
+        Partner::create($data);
+        return redirect()->route('admin.partners.index')->with('success', 'Partner ditambahkan');
     }
 
-    /**
-     * Display the specified resource.
-     */
-    public function show(string $id)
-    {
-        //
-    }
+    public function show(string $id) {}
 
-    /**
-     * Show the form for editing the specified resource.
-     */
     public function edit(string $id)
     {
-        $partner = Partner::find($id);
+        $partner = Partner::findOrFail($id);
         return view('admin.partners.edit', compact('partner'));
     }
 
-    /**
-     * Update the specified resource in storage.
-     */
     public function update(Request $request, string $id)
     {
-        $partner = Partner::find($id);
-        $partner->update([
-            'name' => $request->name,
-            'logo_url' => $request->logo_url
+        $request->validate([
+            'name' => 'required',
+            'logo' => 'image|nullable' 
         ]);
 
-        return redirect('/admin/partners')->with('success', 'Partner berhasil diperbarui!');
+        $partner = Partner::findOrFail($id);
+        $data = $request->all();
+
+        if ($request->hasFile('logo')) {
+            if ($partner->logo_url) {
+                Storage::disk('public')->delete($partner->logo_url);
+            }
+            $data['logo_url'] = $request->file('logo')->store('partners', 'public');
+        }
+
+        $partner->update($data);
+        return redirect()->route('admin.partners.index')->with('success', 'Partner diupdate');
     }
 
-    /**
-     * Remove the specified resource from storage.
-     */
     public function destroy(string $id)
     {
-        $partner = Partner::find($id);
+        $partner = Partner::findOrFail($id);
+        if ($partner->logo) {
+            Storage::disk('public')->delete($partner->logo);
+        }
         $partner->delete();
         
-        return redirect('/admin/partners')->with('success', 'Partner berhasil dihapus!');
+        return redirect()->route('admin.partners.index')->with('success', 'Partner dihapus');
     }
 }
